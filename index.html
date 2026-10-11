@@ -9,6 +9,10 @@
 <link rel="icon" href="icons/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="내 차 빼주세요">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +20,7 @@
 <style>
   :root{--bg:#14161d;--panel:#1d2029;--panel2:#262a35;--ink:#f3efe6;--dim:#9aa0ae;--yellow:#ffd24a;--red:#ff5a4f;--line:rgba(243,239,230,.14)}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;overscroll-behavior:none;
     font-family:'Gowun Dodum',-apple-system,'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;touch-action:manipulation;user-select:none}
   #app{height:100dvh;display:flex;flex-direction:column;max-width:640px;margin:0 auto;padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom))}
   header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;flex:none}
@@ -72,6 +76,7 @@
     <button class="btn" id="btnHint">💡 힌트 <b id="hintN">3</b></button>
     <button class="btn" id="btnRetry">↻ 다시</button>
     <button class="btn" id="btnSnd">🔊 소리</button>
+    <button class="btn" id="btnFs" aria-label="전체화면" style="flex:.45;display:none">⛶</button>
   </footer>
 </div>
 
@@ -403,7 +408,7 @@ function openLevels(){
     const s=save.stars[n]||0;
     b.innerHTML=n+'<small>'+(s?'★'.repeat(s):'')+'</small>';
     b.disabled=n>save.max;
-    b.onclick=()=>startLevel(n);
+    b.onclick=()=>{enterFs();startLevel(n);};
     grid.appendChild(b);
   }
   $('ovLevels').classList.add('show');
@@ -739,7 +744,20 @@ $('btnAgain').onclick=()=>startLevel(G.level);
 $('btnLevels').onclick=openLevels;
 $('btnLvClose').onclick=()=>$('ovLevels').classList.remove('show');
 $('btnPick').onclick=openLevels;
-$('btnStart').onclick=()=>{ac();$('ovTitle').classList.remove('show');};
+/* 전체화면: 시작 버튼을 누르는 순간(사용자 동작) 주소창·내비게이션 바를 숨긴다. 아이폰 Safari는 지원하지 않아서 '홈 화면에 추가'를 안내한다. */
+const fsEl=document.documentElement;
+const fsReq=fsEl.requestFullscreen||fsEl.webkitRequestFullscreen;
+const fsOn=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+function enterFs(){
+  if(!fsReq||fsOn())return;
+  try{const p=fsReq.call(fsEl,{navigationUI:'hide'});if(p&&p.catch)p.catch(()=>{});}catch(e){}
+}
+function toggleFs(){
+  if(fsOn()){try{(document.exitFullscreen||document.webkitExitFullscreen).call(document);}catch(e){}}else enterFs();
+}
+if(fsReq){$('btnFs').style.display='';$('btnFs').onclick=toggleFs;}
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{$('btnFs').textContent=fsOn()?'✕':'⛶';setTimeout(resize,60);}));
+$('btnStart').onclick=()=>{ac();enterFs();$('ovTitle').classList.remove('show');};
 $('btnSnd').onclick=()=>{sndOn=!sndOn;$('btnSnd').textContent=sndOn?'🔊 소리':'🔇 소리';};
 
 const startN=Math.min(save.max,200);
@@ -747,6 +765,7 @@ $('btnStart').textContent=startN>1?'이어하기 — 스테이지 '+startN:'시�
 startLevel(startN);
 $('ovTitle').classList.add('show');
 requestAnimationFrame(loop);
+if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(floorCv)buildFloor();});
 })();
 </script>
